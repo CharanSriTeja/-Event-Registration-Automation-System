@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendUrl = 'event-registration-automation-system-5y96nz26n.vercel.app' || process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(cors({
   origin: frontendUrl,
   credentials: true
