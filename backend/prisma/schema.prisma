@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Event {
+  id            Int            @id @default(autoincrement())
+  name          String
+  date          DateTime
+  venue         String
+  capacity      Int
+  description   String?
+  coverImageUrl String?
+  createdAt     DateTime       @default(now())
+  registrations Registration[]
+}
+
+model Registration {
+  id                Int       @id @default(autoincrement())
+  registrationId    String    @unique // format EVT-2026-0001
+  name              String
+  email             String
+  phone             String
+  collegeId         String?
+  year              String?
+  branch            String?
+  eventId           Int
+  event             Event     @relation(fields: [eventId], references: [id])
+  registeredAt      DateTime  @default(now())
+  entered           Boolean   @default(false)
+  qrSent            Boolean   @default(false)
+  qrCodeUrl         String?
+  entryTimestamp    DateTime?
+  paymentScreenshot String?
+  paymentStatus     String    @default("pending")
+  verifiedAt        DateTime?
+  verifiedBy        String?
+}
