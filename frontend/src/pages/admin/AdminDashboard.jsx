@@ -35,6 +35,18 @@ const AdminDashboard = () => {
     fetchEvents();
   }, []);
 
+  const handleDeleteEvent = async (id, name) => {
+    if (window.confirm(`Are you absolutely sure you want to delete the event "${name}"? This action cannot be undone and will delete all associated registrations and QR jobs.`)) {
+      try {
+        await api.delete(`/events/${id}`);
+        setEvents(events.filter(event => event.id !== id));
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to delete event');
+        console.error(err);
+      }
+    }
+  };
+
   return (
     <motion.div 
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-[80vh]"
@@ -97,7 +109,7 @@ const AdminDashboard = () => {
           animate="show"
         >
           {events.map(event => (
-            <EventCard key={event.id} event={event} isAdmin={true} />
+            <EventCard key={event.id} event={event} isAdmin={true} onDelete={handleDeleteEvent} />
           ))}
         </motion.div>
       )}

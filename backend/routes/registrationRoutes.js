@@ -10,7 +10,9 @@ const upload = require('../config/multer');
 const validateRegistration = [
   body('name').notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('phone')
+    .notEmpty().withMessage('Phone number is required')
+    .matches(/^\d{10}$/).withMessage('Mobile number must be exactly 10 digits'),
   body('eventId').isInt().withMessage('Valid Event ID is required'),
 ];
 

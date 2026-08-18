@@ -16,6 +16,7 @@ model Event {
   coverImageUrl String?
   createdAt     DateTime       @default(now())
   registrations Registration[]
+  qrSendJobs    QrSendJob[]
 }
 
 model Registration {
@@ -38,4 +39,20 @@ model Registration {
   paymentStatus     String    @default("pending")
   verifiedAt        DateTime?
   verifiedBy        String?
+}
+
+model QrSendJob {
+  id                Int       @id @default(autoincrement())
+  eventId           Int
+  event             Event     @relation(fields: [eventId], references: [id])
+  scheduledAt       DateTime  // when this job should start sending
+  rateLimitPerMin   Int       @default(10)
+  status            String    @default("pending")  // pending, processing, completed, failed
+  totalToSend       Int?
+  sentCount         Int       @default(0)
+  failedCount       Int       @default(0)
+  createdBy         String    // admin username
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+  limitCount        Int?      // if set, send only to this many eligible registrations
 }

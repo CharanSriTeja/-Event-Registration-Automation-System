@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
 const { sendConfirmationEmail, sendRejectionEmail } = require('../utils/emailService');
 const { sendWhatsAppMessage } = require('../utils/whatsappService');
+const { triggerQRSendForEvent } = require('../utils/qrSendService');
 
 const login = async (req, res, next) => {
   try {
@@ -124,8 +125,151 @@ const verifyRegistration = async (req, res, next) => {
   }
 };
 
+const getEventStats = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    
+    const [total, entered, confirmed] = await Promise.all([
+      prisma.registration.count({ where: { eventId } }),
+      prisma.registration.count({ where: { eventId, entered: true } }),
+      prisma.registration.count({ where: { eventId, paymentStatus: 'confirmed' } })
+    ]);
+
+    res.status(200).json({ total, entered, confirmed });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAllRegistrations = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    const { search, branch } = req.query;
+
+    const where = { eventId };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { registrationId: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    if (branch) {
+      where.branch = { contains: branch, mode: 'insensitive' };
+    }
+
+    const registrations = await prisma.registration.findMany({
+      where,
+      orderBy: { registeredAt: 'desc' }
+    });
+
+    res.status(200).json(registrations);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+const triggerQRSend = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    const result = await triggerQRSendForEvent(eventId);
+    res.status(200).json({ message: 'QR codes triggered successfully', result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const scheduleQRSend = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    const { timing, customDateTime, rateLimitPerMin, limitCount } = req.body;
+    
+    // Ensure event exists
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      res.status(404);
+      return next(new Error('Event not found'));
+    }
+
+    let scheduledAt;
+    if (timing === 'now') {
+      scheduledAt = new Date();
+    } else if (timing === '1hr') {
+      scheduledAt = new Date(Date.now() + 60 * 60 * 1000);
+    } else if (timing === '2hr') {
+      scheduledAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    } else if (timing === 'custom' && customDateTime) {
+      scheduledAt = new Date(customDateTime);
+    } else {
+      res.status(400);
+      return next(new Error('Invalid timing parameter'));
+    }
+
+    // Count eligible students (confirmed payment + qrSent = false)
+    const totalEligible = await prisma.registration.count({
+      where: {
+        eventId: eventId,
+        paymentStatus: 'confirmed',
+        qrSent: false
+      }
+    });
+
+    // If limitCount is set, totalToSend is min(limitCount, totalEligible)
+    let totalToSend = totalEligible;
+    let actualLimitCount = null;
+    if (limitCount !== undefined && limitCount !== null) {
+      actualLimitCount = parseInt(limitCount, 10);
+      if (actualLimitCount < totalEligible) {
+        totalToSend = actualLimitCount;
+      } else {
+        actualLimitCount = null; // treat as send all
+      }
+    }
+
+    const job = await prisma.qrSendJob.create({
+      data: {
+        eventId,
+        scheduledAt,
+        rateLimitPerMin: rateLimitPerMin || 10,
+        totalToSend,
+        limitCount: actualLimitCount,
+        createdBy: req.admin?.username || 'admin',
+        status: 'pending'
+      }
+    });
+
+    res.status(201).json({
+      message: 'Job scheduled successfully',
+      job,
+      totalEligible
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getQrJobs = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    const jobs = await prisma.qrSendJob.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json(jobs);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   getPendingRegistrations,
-  verifyRegistration
+  verifyRegistration,
+  getEventStats,
+  getAllRegistrations,
+  triggerQRSend,
+  scheduleQRSend,
+  getQrJobs
 };

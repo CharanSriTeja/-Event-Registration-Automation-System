@@ -81,8 +81,33 @@ const updateEvent = async (req, res, next) => {
   }
 };
 
+// @desc    Delete an event completely
+// @route   DELETE /api/events/:id
+// @access  Private (Admin)
+const deleteEvent = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.id, 10);
+    
+    // Transaction to delete all related data then the event
+    await prisma.$transaction([
+      prisma.qrSendJob.deleteMany({ where: { eventId } }),
+      prisma.registration.deleteMany({ where: { eventId } }),
+      prisma.event.delete({ where: { id: eventId } })
+    ]);
+    
+    res.status(200).json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      res.status(404);
+      return next(new Error('Event not found'));
+    }
+    next(error);
+  }
+};
+
 module.exports = {
   getEvents,
   createEvent,
-  updateEvent
+  updateEvent,
+  deleteEvent
 };

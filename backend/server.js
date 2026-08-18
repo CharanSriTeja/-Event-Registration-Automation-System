@@ -35,6 +35,11 @@ app.get("/health", (req, res) => {
 // Centralized error handler
 app.use(errorHandler);
 
+const { startCronJobs } = require('./utils/cronJobs');
+
+// Start background cron jobs
+startCronJobs();
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

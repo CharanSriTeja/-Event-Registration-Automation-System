@@ -43,6 +43,22 @@ const registerForEvent = async (req, res, next) => {
       return next(new Error('Event is already full'));
     }
 
+    // Check if email or phone is already registered for this event
+    const existingRegistration = await prisma.registration.findFirst({
+      where: {
+        eventId: parsedEventId,
+        OR: [
+          { email },
+          { phone }
+        ]
+      }
+    });
+
+    if (existingRegistration) {
+      res.status(400);
+      return next(new Error('This email or phone number is already registered for this event.'));
+    }
+
     // Generate unique registration ID
     const registrationId = await generateRegistrationId(parsedEventId);
 

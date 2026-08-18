@@ -79,3 +79,19 @@ We use Brevo (formerly Sendinblue) for sending automated confirmation and reject
    *(Note: Remember to change the placeholder email address in the script to your own email address first to see the test email).*
 
 **Important:** Email sending failures are strictly logged to the console (including exact API error responses from Brevo) and do **not** block or crash the registration/verification flow itself. The database will still update accordingly.
+
+## Secure QR Code Delivery & Scheduling
+
+A robust background job architecture exists to handle bulk QR code email deliveries.
+
+- **`POST /api/admin/events/:eventId/trigger-qr-send`**: Immediately sends unthrottled QR codes to all eligible registrations for the event (for testing/demo).
+- **`POST /api/admin/events/:eventId/schedule-qr-send`**: Schedules a rate-limited background job.
+  - **Body parameters**: 
+    - `timing`: `"now"`, `"1hr"`, `"2hr"`, or `"custom"`
+    - `customDateTime`: ISO Date string if timing is `"custom"`
+    - `rateLimitPerMin`: e.g. `10` to send 10 emails per minute (1 every 6s).
+    - `limitCount` (optional): Set to only send to the first N eligible students (ordered by oldest registration first). Leave null to send to all.
+- **`GET /api/admin/events/:eventId/qr-jobs`**: View history and progress of all jobs.
+
+**Why Job-Based Rate Limiting?**
+Instead of holding the HTTP request open with in-memory `setTimeout`, jobs are persisted in the `QrSendJob` database table. A minutely cron job picks up pending jobs and processes them gracefully. This avoids duplicate sends, survives server restarts, and prevents our email provider (Brevo) from blocking us for spam/rate-limit violations.

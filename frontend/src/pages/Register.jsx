@@ -163,7 +163,10 @@ const Register = () => {
             <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span></label>
             <input 
               type="tel" name="phone" required value={formData.phone} onChange={handleChange}
-              placeholder="+91 9876543210"
+              placeholder="9876543210"
+              pattern="[0-9]{10}"
+              maxLength="10"
+              title="Mobile number must be exactly 10 digits"
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition-colors bg-gray-50 focus:bg-white" 
             />
           </div>

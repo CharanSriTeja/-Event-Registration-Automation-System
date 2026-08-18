@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, Edit, ClipboardList } from 'lucide-react';
+import { Calendar, MapPin, Users, Edit, ClipboardList, Trash2 } from 'lucide-react';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
 };
 
-const EventCard = ({ event, isAdmin = false }) => {
+const EventCard = ({ event, isAdmin = false, onDelete }) => {
   const imageUrl = event.coverImageUrl 
     ? `http://localhost:5000${event.coverImageUrl}` 
     : 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
@@ -55,21 +55,30 @@ const EventCard = ({ event, isAdmin = false }) => {
         </div>
         
         {isAdmin ? (
-          <div className="flex space-x-3 w-full mt-auto">
-            <Link 
-              to={`/admin/events/${event.id}/edit`}
-              className="flex-1 inline-flex justify-center items-center gap-1.5 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <Edit className="w-4 h-4" />
-              Edit
-            </Link>
+          <div className="flex space-x-2 w-full mt-auto">
             <Link 
               to={`/admin/events/${event.id}/registrations`}
-              className="flex-1 inline-flex justify-center items-center gap-1.5 px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="flex-1 inline-flex justify-center items-center gap-1.5 px-3 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <ClipboardList className="w-4 h-4" />
-              Registrations
+              Manage
             </Link>
+            <Link 
+              to={`/admin/events/${event.id}/edit`}
+              className="inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              title="Edit Event"
+            >
+              <Edit className="w-4 h-4" />
+            </Link>
+            {onDelete && (
+              <button 
+                onClick={() => onDelete(event.id, event.name)}
+                className="inline-flex justify-center items-center px-3 py-2 border border-red-200 text-sm font-medium rounded-lg shadow-sm text-red-600 bg-red-50 hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                title="Delete Event"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ) : (
           <Link 
