@@ -9,7 +9,7 @@ const itemVariants = {
 
 const EventCard = ({ event, isAdmin = false, onDelete }) => {
   const imageUrl = event.coverImageUrl 
-    ? `http://localhost:5000${event.coverImageUrl}` 
+    ? `https://event-registration-automation-system.onrender.com${event.coverImageUrl}` 
     : 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
 
   const eventDate = new Date(event.date).toLocaleDateString(undefined, { 
