@@ -73,20 +73,15 @@ const sendRejectionEmail = async (to, name, eventName, reason) => {
 };
 const sendQRCodeEmail = async (to, name, registrationId, eventName, qrCodeFilePath) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
+    const axios = require('axios');
 
-    // Read the file and convert to base64
-    // Replace leading slash so it's not treated as an absolute path root on Windows
-    const relativeQrPath = qrCodeFilePath.replace(/^[\/\\]/, '');
-    const absolutePath = path.join(__dirname, '..', relativeQrPath);
     let attachmentBase64 = '';
 
-    if (fs.existsSync(absolutePath)) {
-      const fileData = fs.readFileSync(absolutePath);
-      attachmentBase64 = fileData.toString('base64');
-    } else {
-      console.error(`[EmailService] QR code file not found at ${absolutePath}`);
+    try {
+      const response = await axios.get(qrCodeFilePath, { responseType: 'arraybuffer' });
+      attachmentBase64 = Buffer.from(response.data).toString('base64');
+    } catch (fetchErr) {
+      console.error(`[EmailService] Failed to fetch QR code from ${qrCodeFilePath}:`, fetchErr.message);
       return false;
     }
 
