@@ -25,8 +25,7 @@ const createEvent = async (req, res, next) => {
     let coverImageUrl = null;
 
     if (req.file) {
-      // Create URL path for the uploaded file
-      coverImageUrl = `/uploads/${req.file.filename}`;
+      coverImageUrl = req.file.path;
     }
 
     const event = await prisma.event.create({
@@ -63,7 +62,7 @@ const updateEvent = async (req, res, next) => {
     if (description) updateData.description = description;
 
     if (req.file) {
-      updateData.coverImageUrl = `/uploads/${req.file.filename}`;
+      updateData.coverImageUrl = req.file.path;
     }
 
     const updatedEvent = await prisma.event.update({

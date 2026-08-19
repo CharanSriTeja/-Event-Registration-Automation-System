@@ -1,18 +1,11 @@
 const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
-const path = require('path');
-const fs = require('fs');
-
-// Ensure the directory exists
-const qrcodesDir = path.join(__dirname, '..', 'uploads', 'qrcodes');
-if (!fs.existsSync(qrcodesDir)) {
-  fs.mkdirSync(qrcodesDir, { recursive: true });
-}
+const cloudinary = require('../config/cloudinary');
 
 /**
  * Generates a secure QR code containing a signed JWT for a given registrationId
  * @param {string} registrationId 
- * @returns {Promise<string|null>} Path to the generated QR code image
+ * @returns {Promise<string|null>} URL to the generated QR code image
  */
 const generateQRCode = async (registrationId) => {
   try {
@@ -25,12 +18,8 @@ const generateQRCode = async (registrationId) => {
     
     const signedToken = jwt.sign(payload, secret);
     
-    // Create absolute path for saving
-    const fileName = `${registrationId}.png`;
-    const filePath = path.join(qrcodesDir, fileName);
-    
-    // Generate and save QR code
-    await QRCode.toFile(filePath, signedToken, {
+    // Generate QR code as a buffer
+    const qrBuffer = await QRCode.toBuffer(signedToken, {
       errorCorrectionLevel: 'H',
       margin: 1,
       width: 400,
@@ -40,8 +29,27 @@ const generateQRCode = async (registrationId) => {
       }
     });
 
-    // Return the relative URL path to be stored in the DB and sent via email
-    return `/uploads/qrcodes/${fileName}`;
+    // Upload buffer to Cloudinary
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'event-registration/qrcodes',
+          public_id: registrationId,
+          format: 'png'
+        },
+        (error, result) => {
+          if (error) {
+            console.error(`[QR Generator] Cloudinary upload failed for ${registrationId}:`, error);
+            return reject(error);
+          }
+          resolve(result.secure_url);
+        }
+      );
+
+      // Write buffer to stream
+      uploadStream.end(qrBuffer);
+    });
+
   } catch (error) {
     console.error(`[QR Generator] Failed to generate QR code for ${registrationId}:`, error);
     return null;

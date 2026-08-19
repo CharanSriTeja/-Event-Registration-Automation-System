@@ -61,7 +61,7 @@ This is the backend for the Event Registration System, built with Node.js, Expre
   - Body (Reject): `{ "action": "reject", "reason": "optional reason string" }`
 
 ## Notes
-- Uploaded images are stored in the `/uploads` directory and served statically at `http://localhost:5000/uploads/...`.
+- **Cloudinary Integration**: Uploaded images (event covers, payment screenshots, and QR codes) are now stored in Cloudinary instead of the local disk. This solves the issue of missing or deleted files on hosting platforms with ephemeral storage, such as Render.
 ## Brevo Email Integration
 We use Brevo (formerly Sendinblue) for sending automated confirmation and rejection emails upon manual verification by the admin. 
 

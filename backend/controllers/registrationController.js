@@ -20,7 +20,7 @@ const registerForEvent = async (req, res, next) => {
     // Handle payment screenshot
     let paymentScreenshotUrl = null;
     if (req.file) {
-      paymentScreenshotUrl = `/uploads/${req.file.filename}`;
+      paymentScreenshotUrl = req.file.path;
     }
 
     // Check if event exists

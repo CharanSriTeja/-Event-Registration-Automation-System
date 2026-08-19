@@ -4,7 +4,7 @@ const { registerForEvent } = require('../controllers/registrationController');
 
 const router = express.Router();
 
-const upload = require('../config/multer');
+const { uploadPayment } = require('../config/multer');
 
 // Validation middleware
 const validateRegistration = [
@@ -16,6 +16,6 @@ const validateRegistration = [
   body('eventId').isInt().withMessage('Valid Event ID is required'),
 ];
 
-router.post('/', upload.single('paymentScreenshot'), validateRegistration, registerForEvent);
+router.post('/', uploadPayment.single('paymentScreenshot'), validateRegistration, registerForEvent);
 
 module.exports = router;
