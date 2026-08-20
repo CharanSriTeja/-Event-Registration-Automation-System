@@ -239,8 +239,8 @@ const EventRegistrations = () => {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-8">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 mb-8 overflow-x-auto">
+        <nav className="-mb-px flex min-w-max space-x-6 sm:space-x-8">
           <button
             onClick={() => setActiveTab('overview')}
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overview'
@@ -257,7 +257,7 @@ const EventRegistrations = () => {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
           >
-            Pending Verification ({pendingRegistrations.length})
+            Pending ({pendingRegistrations.length})
           </button>
           <button
             onClick={() => setActiveTab('qrjobs')}
@@ -334,9 +334,10 @@ const EventRegistrations = () => {
             </div>
           </div>
 
-          {/* All Registrations Table */}
+          {/* All Registrations — table on md+, cards on mobile */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -390,6 +391,45 @@ const EventRegistrations = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {allRegistrations.length > 0 ? (
+                allRegistrations.map((reg) => (
+                  <div key={reg.id} className="p-4 hover:bg-gray-50/50 transition-colors">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{reg.name}</p>
+                        <p className="text-xs font-mono text-gray-400 mt-0.5">{reg.registrationId}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize
+                          ${reg.paymentStatus === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            reg.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'}`}>
+                          {reg.paymentStatus}
+                        </span>
+                        {reg.entered ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <X className="w-4 h-4 text-gray-300" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600">{reg.email}</p>
+                    <p className="text-xs text-gray-500">{reg.phone}</p>
+                    <div className="flex gap-3 mt-1.5">
+                      {reg.branch && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{reg.branch}</span>}
+                      {reg.year && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{reg.year} Year</span>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-12 text-center text-gray-500 text-sm">
+                  No registrations found matching your criteria.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -406,7 +446,8 @@ const EventRegistrations = () => {
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -483,6 +524,66 @@ const EventRegistrations = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Cards for Pending */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {pendingRegistrations.map((reg) => (
+                  <div key={reg.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{reg.name}</p>
+                        <p className="text-xs text-gray-500">{reg.email}</p>
+                        <p className="text-xs text-gray-400">{reg.phone}</p>
+                      </div>
+                      {reg.paymentScreenshot && (
+                        <button
+                          onClick={() => setSelectedImage(getImageUrl(reg.paymentScreenshot))}
+                          className="relative group rounded overflow-hidden shadow-sm shrink-0"
+                        >
+                          <img
+                            src={getImageUrl(reg.paymentScreenshot)}
+                            alt="Payment Proof"
+                            className="h-14 w-20 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ImageIcon className="w-4 h-4 text-white" />
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-3">
+                      <span className="bg-gray-100 px-2 py-0.5 rounded">{reg.year} Year, {reg.branch}</span>
+                      {reg.collegeId && <span className="bg-gray-100 px-2 py-0.5 rounded">ID: {reg.collegeId}</span>}
+                      <span className="bg-gray-100 px-2 py-0.5 rounded">{format(new Date(reg.registeredAt), 'MMM d, HH:mm')}</span>
+                    </div>
+                    {actionSuccess?.id === reg.id ? (
+                      <div className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white ${actionSuccess.action === 'confirm' ? 'bg-green-500' : 'bg-red-500'}`}>
+                        <CheckCircle2 className="w-4 h-4" />
+                        {actionSuccess.action === 'confirm' ? 'Approved!' : 'Rejected!'}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVerify(reg.id, 'confirm')}
+                          disabled={actionLoading === reg.id}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:opacity-70 transition-colors"
+                        >
+                          {actionLoading === reg.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleVerify(reg.id, 'reject')}
+                          disabled={actionLoading === reg.id}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-70 transition-colors"
+                        >
+                          {actionLoading === reg.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

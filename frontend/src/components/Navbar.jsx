@@ -17,7 +17,9 @@ const Navbar = () => {
   };
 
   const isActive = (path) => {
-    if (path === '/' && location.pathname !== '/') return false;
+    if (path === '/') return location.pathname === '/';
+    // Exact match for /admin so it doesn't highlight on /admin/volunteers or /admin/events/...
+    if (path === '/admin') return location.pathname === '/admin';
     return location.pathname.startsWith(path);
   };
 
