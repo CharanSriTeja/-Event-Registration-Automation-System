@@ -126,6 +126,7 @@ const startScanner = useCallback(async () => {
         try { await html5QrCode.pause(true); } catch {}
 
         let registrationId = decodedText.trim();
+        console.log('FINAL registrationId being sent:', JSON.stringify(registrationId));
         try {
           const url = new URL(decodedText);
           const parts = url.pathname.split('/');
