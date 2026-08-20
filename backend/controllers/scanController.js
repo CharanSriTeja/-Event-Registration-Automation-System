@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const jwt = require('jsonwebtoken');
 
 // Format a Date as "20 Aug 2026, 06:30 AM" using native JS (no external deps)
 const formatDateTime = (date) =>
@@ -9,11 +10,26 @@ const formatDateTime = (date) =>
 
 const scanRegistration = async (req, res, next) => {
   try {
-    const { registrationId } = req.params;
+    const raw = req.params.registrationId;
+    console.log('[Scan] Received registrationId param:', JSON.stringify(raw));
 
-    if (!registrationId) {
+    if (!raw) {
       res.status(400);
       return next(new Error('Registration ID is required'));
+    }
+
+    // QR codes encode a signed JWT containing { registrationId }.
+    // Decode it to recover the plain ID before the DB lookup.
+    let registrationId;
+    try {
+      const secret = process.env.QR_SECRET || process.env.ADMIN_JWT_SECRET || 'fallback-secret';
+      const decoded = jwt.verify(raw, secret);
+      registrationId = decoded.registrationId;
+      console.log('[Scan] Decoded registrationId from JWT:', JSON.stringify(registrationId));
+    } catch (jwtErr) {
+      // Not a JWT (or invalid token) — treat the raw value as a plain ID
+      console.log('[Scan] Not a valid JWT, using raw value as registrationId:', JSON.stringify(raw));
+      registrationId = raw;
     }
 
     const registration = await prisma.registration.findUnique({

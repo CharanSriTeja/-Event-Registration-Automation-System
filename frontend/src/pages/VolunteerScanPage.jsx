@@ -106,68 +106,76 @@ const VolunteerScanPage = () => {
   //   setScanning(true);
   // }, [clearResult, isProcessing]);
 
-// inside your component, replace startScanner with:
+  // inside your component, replace startScanner with:
 
 
-const startScanner = useCallback(async () => {
-  clearResult();
-  setCameraError('');
+  const startScanner = useCallback(async () => {
+    clearResult();
+    setCameraError('');
 
-  const html5QrCode = new Html5Qrcode('qr-scanner-region');
-  scannerInstanceRef.current = html5QrCode;
+    const html5QrCode = new Html5Qrcode('qr-scanner-region');
+    scannerInstanceRef.current = html5QrCode;
 
-  try {
-    await html5QrCode.start(
-      { facingMode: 'environment' }, // or just remove this line for laptop default cam
-      { fps: 10, qrbox: 250 },
-      async (decodedText) => {
-        if (isProcessing) return;
-        setIsProcessing(true);
-        try { await html5QrCode.pause(true); } catch {}
-
-        let registrationId = decodedText.trim();
-        console.log('FINAL registrationId being sent:', JSON.stringify(registrationId));
-        try {
-          const url = new URL(decodedText);
-          const parts = url.pathname.split('/');
-          registrationId = parts[parts.length - 1] || registrationId;
-        } catch {}
-
-        try {
-          const res = await api.post(`/scan/${registrationId}`);
-          setScanResult({ success: true, message: 'Entry Granted', name: res.data.name, eventName: res.data.eventName });
-        } catch (err) {
-          setScanResult({ success: false, message: err.response?.data?.message || 'Scan failed.', name: null });
+    try {
+      // Use rear camera on mobile; on desktop enumerate and pick first available camera
+      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      let cameraConstraint;
+      if (isMobile) {
+        cameraConstraint = { facingMode: 'environment' };
+      } else {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+          setCameraError('No camera found — please connect a webcam and refresh.');
+          return;
         }
+        cameraConstraint = cameras[0].id; // pass camera ID string for desktop
+      }
 
-        resetTimerRef.current = setTimeout(() => {
-          clearResult();
-          try { html5QrCode.resume(); } catch {}
-          setIsProcessing(false);
-        }, RESULT_DISPLAY_DURATION);
-      },
-      () => {} // ignore per-frame decode failures
-    );
-    setScanning(true);
-  } catch (err) {
-    console.error('Camera start error:', err);
-    setCameraError('Camera access is required to scan QR codes — please allow camera permission and refresh.');
-  }
-}, [clearResult, isProcessing]);
+      await html5QrCode.start(
+        cameraConstraint,
+        { fps: 10, qrbox: 250 },
+        async (decodedText) => {
+          if (isProcessing) return;
+          setIsProcessing(true);
+          try { await html5QrCode.pause(true); } catch { }
 
-  
-  useEffect(() => {
-  const t = setTimeout(startScanner, 200);
+          const registrationId = decodedText.trim();
 
-  return () => {
-    clearTimeout(t);
-    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    if (scannerInstanceRef.current) {
-      scannerInstanceRef.current.stop().catch(() => {});
+          try {
+            const res = await api.post(`/scan/${registrationId}`);
+            setScanResult({ success: true, message: 'Entry Granted', name: res.data.name, eventName: res.data.eventName });
+          } catch (err) {
+            setScanResult({ success: false, message: err.response?.data?.message || 'Scan failed.', name: null });
+          }
+
+          resetTimerRef.current = setTimeout(() => {
+            clearResult();
+            try { html5QrCode.resume(); } catch { }
+            setIsProcessing(false);
+          }, RESULT_DISPLAY_DURATION);
+        },
+        () => { } // ignore per-frame decode failures
+      );
+      setScanning(true);
+    } catch (err) {
+      console.error('Camera start error:', err);
+      setCameraError('Camera access is required to scan QR codes — please allow camera permission and refresh.');
     }
-  };
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+  }, [clearResult, isProcessing]);
+
+
+  useEffect(() => {
+    const t = setTimeout(startScanner, 200);
+
+    return () => {
+      clearTimeout(t);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      if (scannerInstanceRef.current) {
+        scannerInstanceRef.current.stop().catch(() => { });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScanNext = () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
@@ -241,8 +249,8 @@ const startScanner = useCallback(async () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className={`w-full rounded-2xl p-6 flex flex-col items-center text-center shadow-2xl border ${scanResult.success
-                  ? 'bg-emerald-900/60 border-emerald-500/50'
-                  : 'bg-red-900/60 border-red-500/50'
+                ? 'bg-emerald-900/60 border-emerald-500/50'
+                : 'bg-red-900/60 border-red-500/50'
                 }`}
             >
               {scanResult.success ? (
