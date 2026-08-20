@@ -6,3 +6,38 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
 }
+
+
+#qr-scanner-region {
+  width: 100% !important;
+}
+
+#qr-scanner-region video {
+  width: 100% !important;
+  border-radius: 1rem;
+}
+
+#qr-scanner-region button {
+  background-color: #4f46e5 !important;
+  color: white !important;
+  padding: 10px 20px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+  margin: 10px 0 !important;
+  font-size: 14px !important;
+}
+
+#qr-scanner-region select {
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #ccc !important;
+  margin: 10px 0 !important;
+  width: 100% !important;
+}
+
+#qr-scanner-region img {
+  display: none !important;
+  /* hides the default html5-qrcode logo/branding image if present */
+}

@@ -9,6 +9,8 @@ dotenv.config();
 const adminRoutes = require("./routes/adminRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
+const authRoutes = require("./routes/authRoutes");
+const scanRoutes = require("./routes/scanRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -29,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/admin", adminRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/register", registrationRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/scan", scanRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

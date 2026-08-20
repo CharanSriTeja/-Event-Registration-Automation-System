@@ -156,8 +156,15 @@ const EventRegistrations = () => {
     e.preventDefault();
     setScheduleLoading(true);
     try {
+      // Fix: convert datetime-local value (local time, no TZ) to ISO with offset
+      // so the backend receives the correct instant regardless of server timezone.
+      let customDateTimeISO = scheduleForm.customDateTime;
+      if (scheduleForm.timing === 'custom' && customDateTimeISO) {
+        customDateTimeISO = new Date(customDateTimeISO).toISOString();
+      }
       const payload = {
         ...scheduleForm,
+        customDateTime: customDateTimeISO,
         limitCount: scheduleForm.limitCount ? parseInt(scheduleForm.limitCount, 10) : null
       };
       await api.post(`/admin/events/${eventId}/schedule-qr-send`, payload);
@@ -172,6 +179,7 @@ const EventRegistrations = () => {
       setScheduleLoading(false);
     }
   };
+
 
   const handleInstantTrigger = async () => {
     if (!window.confirm("Are you sure you want to instantly send QR codes to all eligible users? This will happen immediately and cannot be stopped.")) return;

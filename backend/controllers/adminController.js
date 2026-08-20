@@ -1,8 +1,10 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const prisma = require('../config/prisma');
 const { sendConfirmationEmail, sendRejectionEmail } = require('../utils/emailService');
 const { sendWhatsAppMessage } = require('../utils/whatsappService');
 const { triggerQRSendForEvent } = require('../utils/qrSendService');
+
 
 const login = async (req, res, next) => {
   try {
@@ -263,6 +265,59 @@ const getQrJobs = async (req, res, next) => {
   }
 };
 
+const createVolunteer = async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    // Check if username already exists
+    const existing = await prisma.volunteer.findUnique({ where: { username } });
+    if (existing) {
+      return res.status(409).json({ message: 'Username already taken' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const volunteer = await prisma.volunteer.create({
+      data: { username, password: hashedPassword }
+    });
+
+    return res.status(201).json({
+      message: 'Volunteer created',
+      volunteer: { id: volunteer.id, username: volunteer.username, createdAt: volunteer.createdAt }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const listVolunteers = async (req, res, next) => {
+  try {
+    const volunteers = await prisma.volunteer.findMany({
+      select: { id: true, username: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    return res.status(200).json(volunteers);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteVolunteer = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const volunteer = await prisma.volunteer.findUnique({ where: { id } });
+    if (!volunteer) {
+      return res.status(404).json({ message: 'Volunteer not found' });
+    }
+    await prisma.volunteer.delete({ where: { id } });
+    return res.status(200).json({ message: 'Volunteer removed' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   getPendingRegistrations,
@@ -271,5 +326,9 @@ module.exports = {
   getAllRegistrations,
   triggerQRSend,
   scheduleQRSend,
-  getQrJobs
+  getQrJobs,
+  createVolunteer,
+  listVolunteers,
+  deleteVolunteer
 };
+

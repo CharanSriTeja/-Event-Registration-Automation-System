@@ -56,3 +56,10 @@ model QrSendJob {
   completedAt       DateTime?
   limitCount        Int?      // if set, send only to this many eligible registrations
 }
+
+model Volunteer {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // bcrypt hashed
+  createdAt DateTime @default(now())
+}

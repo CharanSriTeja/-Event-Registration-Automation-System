@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import EventCard from '../../components/EventCard';
 import { motion } from 'framer-motion';
-import { Plus, CalendarDays, AlertCircle } from 'lucide-react';
+import { Plus, CalendarDays, AlertCircle, Users } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -60,13 +60,22 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your events and registrations.</p>
         </div>
-        <Link 
-          to="/admin/events/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto justify-center"
-        >
-          <Plus className="w-5 h-5" />
-          Create Event
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Link
+            to="/admin/volunteers"
+            className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center"
+          >
+            <Users className="w-5 h-5" />
+            Manage Volunteers
+          </Link>
+          <Link
+            to="/admin/events/new"
+            className="inline-flex items-center gap-2 px-5 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center"
+          >
+            <Plus className="w-5 h-5" />
+            Create Event
+          </Link>
+        </div>
       </div>
 
       {loading ? (
