@@ -1,28 +1,47 @@
 import { useEffect, useRef, useState, useContext, useCallback } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, Camera, CameraOff, RefreshCw, LogOut, QrCode } from 'lucide-react';
+import { CheckCircle2, XCircle, Camera, CameraOff, RefreshCw, LogOut, QrCode, List, Search, Calendar } from 'lucide-react';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
+import { format } from 'date-fns';
 
 const RESULT_DISPLAY_DURATION = 3000; // ms
 
 const VolunteerScanPage = () => {
-  const scannerRef = useRef(null);
   const scannerInstanceRef = useRef(null);
   const resetTimerRef = useRef(null);
 
-  const [scanResult, setScanResult] = useState(null); // { success, message, name }
-  const [scanning, setScanning] = useState(false);
+  const [activeTab, setActiveTab] = useState('registrations'); // 'scanner' | 'registrations'
+
+  // Scanner state
+  const [scanResult, setScanResult] = useState(null);
   const [cameraError, setCameraError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hasInitializedScanner, setHasInitializedScanner] = useState(false);
+
+  // Registrations state
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [registrations, setRegistrations] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingRegs, setLoadingRegs] = useState(false);
 
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    if (scannerInstanceRef.current) {
+      try {
+        const state = scannerInstanceRef.current.getState();
+        if (state === 2 || state === 3) {
+          scannerInstanceRef.current.stop().catch(() => {});
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
     logout();
     navigate('/login');
   };
@@ -33,102 +52,24 @@ const VolunteerScanPage = () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
   }, []);
 
-  // const startScanner = useCallback(() => {
-  //   if (scannerInstanceRef.current) {
-  //     try { scannerInstanceRef.current.clear(); } catch { }
-  //     scannerInstanceRef.current = null;
-  //   }
-  //   setScanning(false);
-  //   clearResult();
-  //   setCameraError('');
+  const initScanner = useCallback(async () => {
+    if (scannerInstanceRef.current || cameraError) return;
 
-  //   if (!scannerRef.current) return;
-
-  //   const scanner = new Html5QrcodeScanner(
-  //     'qr-scanner-region',
-  //     {
-  //       fps: 10,
-  //       qrbox: { width: 250, height: 250 },
-  //       supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-  //       rememberLastUsedCamera: true,
-  //       showTorchButtonIfSupported: true,
-  //     },
-  //     /* verbose= */ false
-  //   );
-
-  //   scanner.render(
-  //     async (decodedText) => {
-  //       // Prevent double-processing
-  //       if (isProcessing) return;
-  //       setIsProcessing(true);
-
-  //       // Pause scanner visually while processing
-  //       try { scanner.pause(true); } catch { }
-
-  //       // Extract registrationId — handle full URLs or plain IDs
-  //       let registrationId = decodedText.trim();
-  //       try {
-  //         const url = new URL(decodedText);
-  //         const parts = url.pathname.split('/');
-  //         registrationId = parts[parts.length - 1] || registrationId;
-  //       } catch {
-  //         // not a URL, use as-is
-  //       }
-
-  //       try {
-  //         const res = await api.post(`/scan/${registrationId}`);
-  //         setScanResult({ success: true, message: `Entry Granted`, name: res.data.name, eventName: res.data.eventName });
-  //       } catch (err) {
-  //         const msg = err.response?.data?.message || 'Scan failed. Please try again.';
-  //         setScanResult({ success: false, message: msg, name: null });
-  //       }
-
-  //       // Auto-reset after display duration
-  //       resetTimerRef.current = setTimeout(() => {
-  //         clearResult();
-  //         try { scanner.resume(); } catch { }
-  //         setIsProcessing(false);
-  //       }, RESULT_DISPLAY_DURATION);
-  //     },
-  //     (errorMessage) => {
-  //       // QR decode errors are frequent/normal — only handle camera access errors
-  //       if (
-  //         errorMessage.includes('NotAllowedError') ||
-  //         errorMessage.includes('Permission') ||
-  //         errorMessage.includes('getUserMedia')
-  //       ) {
-  //         setCameraError('Camera access is required to scan QR codes — please allow camera permission and refresh.');
-  //       }
-  //     }
-  //   );
-
-  //   scannerInstanceRef.current = scanner;
-  //   setScanning(true);
-  // }, [clearResult, isProcessing]);
-
-  // inside your component, replace startScanner with:
-
-
-  const startScanner = useCallback(async () => {
     clearResult();
-    setCameraError('');
-
     const html5QrCode = new Html5Qrcode('qr-scanner-region');
     scannerInstanceRef.current = html5QrCode;
 
     try {
-      // Use rear camera on mobile; on desktop enumerate and pick first available camera
       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-      let cameraConstraint;
-      if (isMobile) {
-        cameraConstraint = { facingMode: 'environment' };
-      } else {
+      let cameraConstraint = isMobile ? { facingMode: 'environment' } : undefined;
+      
+      if (!isMobile) {
         const cameras = await Html5Qrcode.getCameras();
         if (!cameras || cameras.length === 0) {
           setCameraError('No camera found — please connect a webcam and refresh.');
           return;
         }
-        cameraConstraint = cameras[0].id; // pass camera ID string for desktop
+        cameraConstraint = cameras[0].id;
       }
 
       await html5QrCode.start(
@@ -150,40 +91,92 @@ const VolunteerScanPage = () => {
 
           resetTimerRef.current = setTimeout(() => {
             clearResult();
-            try { html5QrCode.resume(); } catch { }
+            try { 
+              if (scannerInstanceRef.current && scannerInstanceRef.current.getState() === 3) {
+                scannerInstanceRef.current.resume(); 
+              }
+            } catch { }
             setIsProcessing(false);
           }, RESULT_DISPLAY_DURATION);
         },
         () => { } // ignore per-frame decode failures
       );
-      setScanning(true);
+      setHasInitializedScanner(true);
     } catch (err) {
       console.error('Camera start error:', err);
       setCameraError('Camera access is required to scan QR codes — please allow camera permission and refresh.');
+      scannerInstanceRef.current = null;
     }
-  }, [clearResult, isProcessing]);
-
+  }, [clearResult, isProcessing, cameraError]);
 
   useEffect(() => {
-    const t = setTimeout(startScanner, 200);
+    if (activeTab === 'scanner') {
+      if (!hasInitializedScanner && !scannerInstanceRef.current) {
+        initScanner();
+      } else if (scannerInstanceRef.current) {
+        try {
+          if (scannerInstanceRef.current.getState() === 3) { // PAUSED
+            scannerInstanceRef.current.resume();
+          }
+        } catch (e) {}
+      }
+    } else {
+      if (scannerInstanceRef.current) {
+        try {
+          if (scannerInstanceRef.current.getState() === 2) { // SCANNING
+            scannerInstanceRef.current.pause(true);
+          }
+        } catch (e) {}
+      }
+    }
+  }, [activeTab, hasInitializedScanner, initScanner]);
 
+  useEffect(() => {
     return () => {
-      clearTimeout(t);
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
       if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.stop().catch(() => { });
+        try {
+          const state = scannerInstanceRef.current.getState();
+          if (state === 2 || state === 3) {
+            scannerInstanceRef.current.stop().catch(() => {});
+          }
+        } catch (e) {}
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleScanNext = () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     clearResult();
     if (scannerInstanceRef.current) {
-      try { scannerInstanceRef.current.resume(); } catch { }
+      try { 
+        if (scannerInstanceRef.current.getState() === 3) {
+          scannerInstanceRef.current.resume(); 
+        }
+      } catch { }
     }
   };
+
+  // Fetch events for dropdown
+  useEffect(() => {
+    api.get('/events').then(res => setEvents(res.data)).catch(console.error);
+  }, []);
+
+  // Fetch registrations when selected event or search changes
+  useEffect(() => {
+    if (activeTab === 'registrations' && selectedEventId) {
+      setLoadingRegs(true);
+      const timeoutId = setTimeout(() => {
+        api.get(`/scan/events/${selectedEventId}/registrations?search=${searchQuery}`)
+          .then(res => setRegistrations(res.data))
+          .catch(console.error)
+          .finally(() => setLoadingRegs(false));
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setRegistrations([]);
+    }
+  }, [activeTab, selectedEventId, searchQuery]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col">
@@ -199,7 +192,6 @@ const VolunteerScanPage = () => {
           </div>
         </div>
         <button
-          id="volunteer-logout"
           onClick={handleLogout}
           className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm py-1.5 px-3 rounded-lg hover:bg-white/10"
         >
@@ -208,12 +200,27 @@ const VolunteerScanPage = () => {
         </button>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-start px-4 pt-6 pb-8 max-w-lg mx-auto w-full">
+      {/* Tabs */}
+      <div className="flex bg-slate-800 border-b border-white/10">
+        <button
+          onClick={() => setActiveTab('scanner')}
+          className={`flex-1 py-3 text-sm font-bold flex justify-center items-center gap-2 transition-colors ${activeTab === 'scanner' ? 'text-indigo-400 border-b-2 border-indigo-400 bg-slate-800/50' : 'text-slate-400 hover:text-slate-300'}`}
+        >
+          <Camera className="w-4 h-4" /> Scanner
+        </button>
+        <button
+          onClick={() => setActiveTab('registrations')}
+          className={`flex-1 py-3 text-sm font-bold flex justify-center items-center gap-2 transition-colors ${activeTab === 'registrations' ? 'text-indigo-400 border-b-2 border-indigo-400 bg-slate-800/50' : 'text-slate-400 hover:text-slate-300'}`}
+        >
+          <List className="w-4 h-4" /> Registrations
+        </button>
+      </div>
+
+      {/* Scanner view */}
+      <div className={`flex-1 flex flex-col items-center justify-start px-4 pt-6 pb-8 max-w-lg mx-auto w-full ${activeTab === 'scanner' ? 'flex' : 'hidden'}`}>
         <h1 className="text-white font-extrabold text-2xl mb-1 text-center">Scan QR Code</h1>
         <p className="text-slate-400 text-sm text-center mb-6">Point camera at participant's QR code to grant entry</p>
 
-        {/* Camera error */}
         {cameraError && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -232,18 +239,13 @@ const VolunteerScanPage = () => {
           </motion.div>
         )}
 
-        {/* Scanner region */}
-        {!cameraError && (
-          <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-6 bg-black">
-            <div id="qr-scanner-region" className="w-full" />
-          </div>
-        )}
+        <div className={`w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-6 bg-black ${cameraError ? 'hidden' : 'block'}`}>
+          <div id="qr-scanner-region" className="w-full min-h-[250px]" />
+        </div>
 
-        {/* Result overlay banner */}
         <AnimatePresence>
           {scanResult && (
             <motion.div
-              key="result"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -283,7 +285,6 @@ const VolunteerScanPage = () => {
               )}
 
               <button
-                id="scan-next-btn"
                 onClick={handleScanNext}
                 className="mt-5 flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-white/20 hover:bg-white/30 transition-colors border border-white/20"
               >
@@ -294,12 +295,80 @@ const VolunteerScanPage = () => {
           )}
         </AnimatePresence>
 
-        {/* Idle prompt */}
         {!scanResult && !cameraError && (
           <div className="flex flex-col items-center text-slate-500 text-sm gap-2">
             <Camera className="w-5 h-5" />
             <p>Waiting for QR code…</p>
           </div>
+        )}
+      </div>
+
+      {/* Registrations view */}
+      <div className={`flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full ${activeTab === 'registrations' ? 'flex' : 'hidden'}`}>
+        <h2 className="text-white text-xl font-bold mb-4">Event Registrations</h2>
+        
+        <select 
+          value={selectedEventId}
+          onChange={(e) => setSelectedEventId(e.target.value)}
+          className="w-full bg-slate-800 border border-slate-600 text-white rounded-lg p-3 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"
+        >
+          <option value="">Select an Event...</option>
+          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+        </select>
+        
+        {selectedEventId && (
+          <>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input 
+                type="text"
+                placeholder="Search by name, ID or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-600 text-white pl-10 pr-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
+              />
+            </div>
+
+            {loadingRegs ? (
+              <div className="text-slate-400 text-center py-10 flex flex-col items-center">
+                <RefreshCw className="w-6 h-6 animate-spin mb-2" />
+                <p>Loading registrations...</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-3 pb-20">
+                {registrations.length > 0 ? registrations.map(reg => (
+                  <div key={reg.id} className="bg-slate-800/80 rounded-xl p-4 border border-slate-700/50 shadow-sm hover:border-slate-600 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-white font-bold">{reg.name}</p>
+                        <p className="text-slate-400 text-xs font-mono mt-0.5">{reg.registrationId}</p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${reg.entered ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-700 text-slate-300'}`}>
+                        {reg.entered ? 'Scanned' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 mt-4 pt-3 border-t border-slate-700/50 text-xs">
+                      <div className="flex items-center text-slate-400">
+                        <Calendar className="w-3.5 h-3.5 mr-2" />
+                        Registered: <span className="text-slate-300 ml-1 font-medium">{format(new Date(reg.registeredAt), 'MMM d, yyyy h:mm a')}</span>
+                      </div>
+                      {reg.entered && (
+                        <div className="flex items-center text-emerald-400/80">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-emerald-400" />
+                          Scanned At: <span className="text-emerald-300 ml-1 font-medium">{reg.entryTimestamp ? format(new Date(reg.entryTimestamp), 'MMM d, yyyy h:mm a') : 'N/A'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-slate-500 text-center py-12 flex flex-col items-center bg-slate-800/50 rounded-xl border border-slate-700/50">
+                    <Search className="w-8 h-8 mb-3 opacity-50" />
+                    <p>No registrations found.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

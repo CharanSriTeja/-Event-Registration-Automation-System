@@ -85,4 +85,47 @@ const scanRegistration = async (req, res, next) => {
   }
 };
 
-module.exports = { scanRegistration };
+const getEventRegistrationsForVolunteer = async (req, res, next) => {
+  try {
+    const eventId = parseInt(req.params.eventId, 10);
+    const { search, branch } = req.query;
+
+    const where = { eventId };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { registrationId: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (branch) {
+      where.branch = { contains: branch, mode: 'insensitive' };
+    }
+
+    const registrations = await prisma.registration.findMany({
+      where,
+      select: {
+        id: true,
+        registrationId: true,
+        name: true,
+        email: true,
+        phone: true,
+        branch: true,
+        year: true,
+        collegeId: true,
+        paymentStatus: true,
+        entered: true,
+        registeredAt: true,
+        entryTimestamp: true
+      },
+      orderBy: { registeredAt: 'desc' }
+    });
+
+    res.status(200).json(registrations);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { scanRegistration, getEventRegistrationsForVolunteer };

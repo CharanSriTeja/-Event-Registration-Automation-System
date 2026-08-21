@@ -345,7 +345,7 @@ const EventRegistrations = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch & Year</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entered</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Timeline / Entry</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -373,10 +373,18 @@ const EventRegistrations = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs text-gray-500 mb-1">
+                            Reg: {format(new Date(reg.registeredAt), 'MMM d, yyyy HH:mm')}
+                          </div>
                           {reg.entered ? (
-                            <span className="inline-flex items-center text-green-600"><CheckCircle2 className="w-5 h-5" /></span>
+                            <div className="flex items-center text-xs text-green-600 font-medium">
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Scanned: {reg.entryTimestamp ? format(new Date(reg.entryTimestamp), 'MMM d, HH:mm') : 'N/A'}
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center text-gray-400"><X className="w-5 h-5" /></span>
+                            <div className="flex items-center text-xs text-gray-400">
+                              <X className="w-4 h-4 mr-1" /> Not Entered
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -418,9 +426,18 @@ const EventRegistrations = () => {
                     </div>
                     <p className="text-xs text-gray-600">{reg.email}</p>
                     <p className="text-xs text-gray-500">{reg.phone}</p>
-                    <div className="flex gap-3 mt-1.5">
+                    <div className="flex gap-3 mt-1.5 mb-2">
                       {reg.branch && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{reg.branch}</span>}
                       {reg.year && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{reg.year} Year</span>}
+                    </div>
+                    <div className="space-y-1 pt-2 border-t border-gray-100 text-xs">
+                      <div className="text-gray-500">Reg: {format(new Date(reg.registeredAt), 'MMM d, yyyy HH:mm')}</div>
+                      {reg.entered && (
+                        <div className="text-green-600 font-medium flex items-center">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                          Scanned: {reg.entryTimestamp ? format(new Date(reg.entryTimestamp), 'MMM d, HH:mm') : 'N/A'}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
