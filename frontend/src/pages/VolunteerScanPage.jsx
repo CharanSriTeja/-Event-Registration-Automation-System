@@ -12,13 +12,13 @@ const RESULT_DISPLAY_DURATION = 3000; // ms
 const VolunteerScanPage = () => {
   const scannerInstanceRef = useRef(null);
   const resetTimerRef = useRef(null);
+  const isProcessingRef = useRef(false); // synchronous lock — cannot go stale like useState
 
   const [activeTab, setActiveTab] = useState('registrations'); // 'scanner' | 'registrations'
 
   // Scanner state
   const [scanResult, setScanResult] = useState(null);
   const [cameraError, setCameraError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [hasInitializedScanner, setHasInitializedScanner] = useState(false);
 
   // Registrations state
@@ -48,7 +48,7 @@ const VolunteerScanPage = () => {
 
   const clearResult = useCallback(() => {
     setScanResult(null);
-    setIsProcessing(false);
+    isProcessingRef.current = false;
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
   }, []);
 
@@ -76,8 +76,10 @@ const VolunteerScanPage = () => {
         cameraConstraint,
         { fps: 10, qrbox: 250 },
         async (decodedText) => {
-          if (isProcessing) return;
-          setIsProcessing(true);
+          // Use a ref-based lock — React state (isProcessing) is stale inside this closure
+          // and would never actually block a second rapid decode.
+          if (isProcessingRef.current) return;
+          isProcessingRef.current = true;
           try { await html5QrCode.pause(true); } catch { }
 
           const registrationId = decodedText.trim();
@@ -96,7 +98,7 @@ const VolunteerScanPage = () => {
                 scannerInstanceRef.current.resume(); 
               }
             } catch { }
-            setIsProcessing(false);
+            isProcessingRef.current = false;
           }, RESULT_DISPLAY_DURATION);
         },
         () => { } // ignore per-frame decode failures
@@ -107,7 +109,7 @@ const VolunteerScanPage = () => {
       setCameraError('Camera access is required to scan QR codes — please allow camera permission and refresh.');
       scannerInstanceRef.current = null;
     }
-  }, [clearResult, isProcessing, cameraError]);
+  }, [clearResult, cameraError]);
 
   useEffect(() => {
     if (activeTab === 'scanner') {
@@ -148,6 +150,7 @@ const VolunteerScanPage = () => {
   const handleScanNext = () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     clearResult();
+    isProcessingRef.current = false;
     if (scannerInstanceRef.current) {
       try { 
         if (scannerInstanceRef.current.getState() === 3) {

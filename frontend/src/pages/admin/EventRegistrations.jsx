@@ -346,6 +346,7 @@ const EventRegistrations = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch & Year</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Timeline / Entry</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">QR Sent</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -387,11 +388,23 @@ const EventRegistrations = () => {
                             </div>
                           )}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {reg.qrSent ? (
+                            <div>
+                              <div className="flex items-center text-xs text-indigo-600 font-medium">
+                                <QrCode className="w-4 h-4 mr-1" /> Sent
+                              </div>
+                              {reg.qrCodeUrl && <div className="text-xs text-gray-400 mt-0.5">Cloudinary ✓</div>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">Not sent</span>
+                          )}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                         No registrations found matching your criteria.
                       </td>
                     </tr>
@@ -438,6 +451,10 @@ const EventRegistrations = () => {
                           Scanned: {reg.entryTimestamp ? format(new Date(reg.entryTimestamp), 'MMM d, HH:mm') : 'N/A'}
                         </div>
                       )}
+                      <div className={`flex items-center font-medium ${reg.qrSent ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <QrCode className="w-3.5 h-3.5 mr-1" />
+                        {reg.qrSent ? 'QR Sent ✓' : 'QR Not Sent'}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -648,6 +665,7 @@ const EventRegistrations = () => {
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate Limit</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Target Audience</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Progress</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Remaining</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -672,14 +690,27 @@ const EventRegistrations = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {job.limitCount ? `First ${job.limitCount}` : 'All Eligible'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Sent: {job.sentCount} | Failed: {job.failedCount} {job.totalToSend ? `/ Total: ${job.totalToSend}` : ''}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="text-gray-700">Sent: <span className="font-semibold text-green-600">{job.sentCount}</span></div>
+                          {job.failedCount > 0 && <div className="text-red-500 text-xs">Failed: {job.failedCount}</div>}
+                          {job.totalToSend ? <div className="text-gray-400 text-xs">Total: {job.totalToSend}</div> : null}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {job.status !== 'completed' && job.totalToSend ? (
+                            <span className="font-semibold text-amber-600">
+                              {Math.max(0, job.totalToSend - job.sentCount - job.failedCount)} remaining
+                            </span>
+                          ) : job.status === 'completed' ? (
+                            <span className="text-green-600 font-semibold">All done ✓</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                         No QR jobs scheduled yet.
                       </td>
                     </tr>
