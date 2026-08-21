@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 // Format a Date as "20 Aug 2026, 06:30 AM" using native JS (no external deps)
 const formatDateTime = (date) =>
   new Date(date).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true
   });
