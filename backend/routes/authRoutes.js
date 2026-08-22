@@ -2,11 +2,12 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
+const { loginLimiter } = require('../middleware/rateLimiters');
 
 const router = express.Router();
 
 // POST /api/auth/login — volunteer login
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
   try {
     const { username, password } = req.body;
 

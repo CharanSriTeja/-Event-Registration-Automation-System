@@ -61,7 +61,7 @@ This system manages the end-to-end workflow for college club events:
 - Public event listing page with cover photos, dates, and venues
 - Registration form: name, email, phone, college ID, year, branch
 - Payment screenshot upload (manual verification model — no live payment gateway by deliberate scope decision)
-- **Unique registration ID** auto-generated per event in the format `EVT-{year}-{0001}`, using an atomic `UPDATE...RETURNING` counter-table query to prevent race conditions under concurrent registrations
+- **Unique registration ID** auto-generated per event in the format `EVT-{eventId}-{year}-{0001}`. This uses an **atomic counter-table approach** (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`) to prevent race conditions under concurrent registrations, replacing a previous non-atomic method that was vulnerable to unique constraint errors.
 
 ---
 
@@ -113,11 +113,16 @@ Event cover photos, payment screenshots, and generated QR codes are all stored o
 QR codes encode **only the `registrationId` string** — no personal data — keeping the payload minimal for both privacy and scan reliability.
 
 ### 6. Atomic DB Operations at Every Concurrency-Sensitive Point
-- **Registration ID generation** — `UPDATE counter SET value = value + 1 RETURNING value` — avoids race conditions without application-level locking
+- **Registration ID generation** — Uses an atomic upsert on an `EventCounter` table (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`) to safely increment the registration ID. This guarantees race condition safety under concurrent registrations without application-level locking.
 - **Entry scanning** — single conditional atomic update prevents double-entry, even under concurrent volunteer scans
 
 ### 7. Rate-Limited, Job-Based QR Sending
 QR emails are sent via a DB-persisted `QrSendJob` model processed by a cron job every minute. This avoids firing all emails at once, which would trigger Brevo's spam/rate-limit thresholds on large registrant lists. Scheduling also survives server restarts.
+
+### 8. API Endpoint Rate Limiting
+To prevent abuse, public-facing endpoints are protected using `express-rate-limit`:
+- **Registration (`/api/register`)**: Max 10 attempts per 15 minutes per IP.
+- **Logins (`/api/admin/login` & `/api/auth/login`)**: Max 5 attempts per 15 minutes per IP.
 
 ---
 
@@ -278,8 +283,7 @@ npm run build
 | 1 | **No automated tests** | Manual testing only — would add Jest/Supertest given more time |
 | 2 | **No real payment gateway** | Manual screenshot verification instead of Razorpay/Stripe |
 | 3 | **WhatsApp notifications stubbed** | Email (Brevo) is the fully working notification channel |
-| 4 | **No rate limiting on public endpoints** | Would add `express-rate-limit` on `/register` and `/login` in production |
-| 5 | **No duplicate-registration prevention** | Same email could register twice for the same event — would add a unique DB constraint |
+| 4 | **No duplicate-registration prevention** | Same email could register twice for the same event — would add a unique DB constraint |
 | 6 | **No centralized error monitoring** | Relies on Render's console logs — would integrate Sentry in production |
 | 7 | **Laptop webcam QR scanning reliability** | Mobile is the primary supported scanning device, matching realistic use (volunteers at event entrances with phones) |
 | 8 | **Certificate generation** | Planned: auto-generate/email participation certificates based on `entered: true` status post-event — not yet built |

@@ -1,24 +1,20 @@
 const prisma = require('../config/prisma');
 
-const generateRegistrationId = async (eventId) => {
-  const currentYear = new Date().getFullYear();
-  
-  // Get the last inserted registration to find the next reliable global number
-  const lastRegistration = await prisma.registration.findFirst({
-    orderBy: {
-      id: 'desc'
-    }
-  });
-
-  let nextNumber = 1;
-  if (lastRegistration) {
-    // Use the autoincrement ID to ensure we never reuse numbers, even across different events
-    nextNumber = lastRegistration.id + 1;
-  }
-
-  const paddedNumber = String(nextNumber).padStart(4, '0');
-  
-  return `EVT-${currentYear}-${paddedNumber}`;
-};
+async function generateRegistrationId(eventId) {
+  const year = new Date().getFullYear();
+  const result = await prisma.$queryRaw`
+    INSERT INTO "EventCounter" ("eventId", "lastNumber")
+    VALUES (
+      ${eventId}, 
+      COALESCE((SELECT COUNT(*)::int FROM "Registration" WHERE "eventId" = ${eventId}), 0) + 1
+    )
+    ON CONFLICT ("eventId")
+    DO UPDATE SET "lastNumber" = GREATEST("EventCounter"."lastNumber" + 1, COALESCE((SELECT COUNT(*)::int FROM "Registration" WHERE "eventId" = ${eventId}), 0) + 1)
+    RETURNING "lastNumber";
+  `;
+  const num = result[0].lastNumber;
+  // Format: EVT-{eventId}-{year}-0001 (e.g., EVT-5-2026-0001)
+  return `EVT-${eventId}-${year}-${String(num).padStart(4, '0')}`;
+}
 
 module.exports = generateRegistrationId;

@@ -6,6 +6,8 @@ const router = express.Router();
 
 const { uploadPayment } = require('../config/multer');
 
+const { registerLimiter } = require('../middleware/rateLimiters');
+
 // Validation middleware
 const validateRegistration = [
   body('name').notEmpty().withMessage('Name is required'),
@@ -16,6 +18,6 @@ const validateRegistration = [
   body('eventId').isInt().withMessage('Valid Event ID is required'),
 ];
 
-router.post('/', uploadPayment.single('paymentScreenshot'), validateRegistration, registerForEvent);
+router.post('/', registerLimiter, uploadPayment.single('paymentScreenshot'), validateRegistration, registerForEvent);
 
 module.exports = router;

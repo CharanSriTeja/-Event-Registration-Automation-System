@@ -13,10 +13,11 @@ const {
   deleteVolunteer
 } = require('../controllers/adminController');
 const adminAuth = require('../middleware/adminAuth');
+const { loginLimiter } = require('../middleware/rateLimiters');
 
 const router = express.Router();
 
-router.post('/login', login);
+router.post('/login', loginLimiter, login);
 
 // Protected routes — registrations
 router.get('/registrations/:eventId/pending', adminAuth, getPendingRegistrations);

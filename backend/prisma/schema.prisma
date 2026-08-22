@@ -63,3 +63,8 @@ model Volunteer {
   password  String   // bcrypt hashed
   createdAt DateTime @default(now())
 }
+
+model EventCounter {
+  eventId    Int  @id
+  lastNumber Int  @default(0)
+}
