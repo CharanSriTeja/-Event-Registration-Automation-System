@@ -14,6 +14,11 @@ const scanRoutes = require("./routes/scanRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
+
+// Trust the reverse proxy (Render) so the rate limiter sees the actual user's IP
+// instead of the load balancer's IP.
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 5000;
 
 // Middleware
